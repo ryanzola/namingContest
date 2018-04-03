@@ -1,23 +1,58 @@
 import express from 'express';
-import data from '../src/testData';
+import { MongoClient, ObjectID } from 'mongodb';
+import assert from 'assert';
+import config from '../config';
 
-const router = express.Router();
-const contests = data.contests.reduce((obj, contest) => {
-  obj[contest.id] = contest;
-  return obj;
-}, {});
+let mdb;
+MongoClient.connect(config.mongodbUri, (err, db) => {
+  assert.equal(null, err);
+  console.info("Connected successfully to database");
 
-router.get('/contests', (req, res) => {
-  res.send({
-    contests: contests
-  });
+  mdb = db;
 });
 
-router.get('/contest/:contestId', (req, res) => {
-  let contest = contests[req.params.contestId];
-  contest.description = 'Id reprehenderit qui magna aute laboris. Sit tempor laboris consectetur aliquip enim velit. Ea ex veniam amet minim mollit do id culpa ex deserunt. Proident mollit duis ea deserunt veniam. Ea minim ad Lorem sunt ea ut laboris. Dolor deserunt voluptate id exercitation non veniam dolore mollit anim eu laboris.';
-  
-  res.send(contest);
+const router = express.Router();
+
+router.get('/contests', (req, res) => {
+  let contests = {};
+  mdb.collection('contests').find({})
+    .project({
+      categoryName: 1,
+      contestName: 1
+    })
+    .each((err, contest) => {
+      assert.equal(null, err);
+
+      if(!contest) {    // no more contest objects
+        res.send({ contests });
+        return;
+      }
+
+      contests[contest._id] = contest;
+    });
+});
+
+router.get('/contests/:contestId', (req, res) => {
+  mdb.collection('contests').findOne({ _id: ObjectID(req.params.contestId) })
+    .then(contest => res.send(contest))
+    .catch(err => console.error(err)); 
+});
+
+router.get('/names/:nameIds', (req, res) => {
+  const nameIds = req.params.nameIds.split(',').map(ObjectID);
+  let names = {};
+  mdb.collection('names').find({ _id: {$in: nameIds}})
+    .each((err, name) => {
+      assert.equal(null, err);
+
+      if(!name) {    // no more contest objects
+        res.send({ names });
+        return;
+      }
+
+      names[name._id] = name;
+    });
 });
 
 export default router;
+
