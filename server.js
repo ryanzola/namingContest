@@ -2,6 +2,7 @@ import config from './config';
 import apiRouter from './api';
 import sassMiddleware from 'node-sass-middleware';
 import path from 'path';
+import bodyParser from 'body-parser';
 import serverRender from './serverRender';
 import express from 'express';
 
@@ -13,6 +14,7 @@ server.use(sassMiddleware({
 }));
 
 server.set('view engine', 'ejs');
+server.use(bodyParser.json());
 
 server.get(['/', '/contest/:contestId'], (req, res) => {
   serverRender(req.params.contestId)
